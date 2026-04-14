@@ -1,7 +1,10 @@
-import Image from "next/image";
+import Product from "./_components/Product/Product";
+import Footer from "./_components/Footer/Footer";
 
 export default function Home() {
   return (
-    <h1 className="bg-amber-500">Welcome to the Home Page</h1>
+    <>
+      <Product />
+    </>
   );
 }
