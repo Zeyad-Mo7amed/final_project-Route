@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const token = await getToken({req});
-  console.log('cartToken from handler',token);
   if (!token) 
     return NextResponse.json({error:'User is not authenticated'},{status:401});
   const data = await fetch(`${process.env.NEXT_PUBLIC_API}cart`, {

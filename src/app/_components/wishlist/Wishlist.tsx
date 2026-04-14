@@ -1,5 +1,4 @@
 "use client";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Loading from "../Loading/Loading";
 import { deleteItemWichtes } from "@/api/wishlist/delete.wishlist.api";

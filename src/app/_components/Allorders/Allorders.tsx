@@ -3,7 +3,6 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
 
-// مكون فرعي لكل أوردر عشان يحل مشكلة فتح الكل مع بعض
 function OrderRow({ order }: { order: any }) {
   const [isOpent, setIsOpent] = useState(false);
 
