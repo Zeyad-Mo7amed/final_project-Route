@@ -5,11 +5,11 @@ import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { onlinePayemnt } from "@/api/pyment/chickout.api";
 import { useQuery } from "@tanstack/react-query";
 import Loading from "../Loading/Loading";
 import { CartItem } from "@/interfaces/product.interface";
 import { Spinner } from "@/components/ui/spinner";
+import { onlinePayment } from "@/api/pyment/chickout.api";
 const checkoutSchema = z.object({
   city: z.string().min(1, "City is required"),
   details: z.string().min(5, "Address is too short"),
@@ -48,7 +48,7 @@ export default function CheckOut({ id }: { id: string }) {
       };
 
       if (payment === "online") {
-        const res = await onlinePayemnt(id, shippingAddress);
+        const res = await onlinePayment(id, shippingAddress);
         setIsLoading(false);
         window.location.href = res.session.url;
       } else {
