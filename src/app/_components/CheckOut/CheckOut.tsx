@@ -5,11 +5,14 @@ import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
+import { onlinePayment } from "@/api/pyment/chickout.api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Loading from "../Loading/Loading";
 import { CartItem } from "@/interfaces/product.interface";
 import { Spinner } from "@/components/ui/spinner";
-import { onlinePayment } from "@/api/pyment/chickout.api";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { cashPayment } from "@/api/pyment/cachOrder.api";
 const checkoutSchema = z.object({
   city: z.string().min(1, "City is required"),
   details: z.string().min(5, "Address is too short"),
@@ -18,7 +21,9 @@ const checkoutSchema = z.object({
 
 export default function CheckOut({ id }: { id: string }) {
   const [payment, setPayment] = useState("cash");
-  const [isLoadingg,setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ["cart"],
     queryFn: async () => {
@@ -39,25 +44,32 @@ export default function CheckOut({ id }: { id: string }) {
   });
 
   const onSubmit = async (data: z.infer<typeof checkoutSchema>) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       const shippingAddress = {
         city: data.city,
         details: data.details,
         phone: data.phone,
       };
-
-      if (payment === "online") {
-        const res = await onlinePayment(id, shippingAddress);
-        setIsLoading(false);
-        window.location.href = res.session.url;
-      } else {
-        setIsLoading(false);
-        console.log("Cash order", shippingAddress);
-      }
-    } catch (error) {
-      setIsLoading(false);
+if (payment === "online") {
+  const res = await onlinePayment(id, shippingAddress);
+  toast.success("Redirecting to payment gateway...");
+  window.location.href = res.session.url;
+} else {
+  try {
+    await cashPayment(id, shippingAddress);
+    await queryClient.invalidateQueries({ queryKey: ["cart"] });
+    toast.success("Order placed successfully! Cash on delivery selected.");
+    router.push("/allorders");
+  } catch (error) {
+    toast.error("Something went wrong with the cash order.");
+  }
+}
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong. Please try again.");
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -70,7 +82,7 @@ export default function CheckOut({ id }: { id: string }) {
   }
 
   if (isLoading) {
-    return <Loading />; 
+    return <Loading />;
   }
 
   const totalPrice = data?.data?.totalCartPrice || 0;
@@ -81,7 +93,8 @@ export default function CheckOut({ id }: { id: string }) {
     (totalPrice / freeShippingLimit) * 100,
     100,
   );
-  const shippingFees = isFreeShipping ? 0 : 50; // دلوقتي صح
+  const shippingFees = isFreeShipping ? 0 : 50;
+  const finalPrice = totalPrice + (isFreeShipping ? 0 : shippingFees);
   return (
     <>
       <div className="bg-gradient-to-b from-gray-50 to-white min-h-screen py-8">
@@ -452,10 +465,15 @@ export default function CheckOut({ id }: { id: string }) {
 
                     {/* زرار إتمام العملية اللي بيستخدم الـ ID اللي باعتينه */}
                     <button
-                      onClick={handleCompleteOrder}
-                      className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl mt-4 transition-colors shadow-md"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl mt-4 transition-colors shadow-md disabled:opacity-50"
                     >
-                      {isLoadingg ? <Spinner /> : "Complete Order for"}
+                      {isSubmitting ? (
+                        <Spinner />
+                      ) : (
+                        `Complete Order for ${finalPrice} EGP`
+                      )}
                     </button>
                     <div className="flex items-center gap-3 p-4 bg-green-200 rounded-xl border border-green-100 mt-4">
                       <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
@@ -593,6 +611,7 @@ export default function CheckOut({ id }: { id: string }) {
                     </div>
                     <button
                       type="submit"
+                      disabled={isSubmitting}
                       className="w-full my-6 cursor-pointer bg-gradient-to-br from-[#16a34a] via-[#22c55e] to-[#16a34a] text-white py-4 rounded-xl font-bold hover:bg-green-800 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary-600/20 active:scale-[0.98]"
                     >
                       <svg
@@ -608,7 +627,7 @@ export default function CheckOut({ id }: { id: string }) {
                           d="M369.4 128l-34.3-48-222.1 0-34.3 48 290.7 0zM0 148.5c0-13.3 4.2-26.3 11.9-37.2L60.9 42.8C72.9 26 92.3 16 112.9 16l222.1 0c20.7 0 40.1 10 52.1 26.8l48.9 68.5c7.8 10.9 11.9 23.9 11.9 37.2L448 416c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 148.5z"
                         />
                       </svg>
-                      Place Order
+                      {isSubmitting ? <Spinner /> : "Place Order"}
                     </button>
                     <div className="flex items-center justify-center gap-4 mt-4 py-3 border-t border-gray-100">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
